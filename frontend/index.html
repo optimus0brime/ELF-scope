@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>ELFscope</title>
+  <link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <span class="logo">ELFscope</span>
+  <span class="status-badge" id="status-badge">IDLE</span>
+  <div class="topbar-chips">
+    <span class="chip" id="chip-filename">no binary</span>
+    <span class="chip" id="chip-entry"></span>
+    <span class="chip" id="chip-instr-count">0 instrs</span>
+  </div>
+</header>
+
+<!-- UPLOAD -->
+<section class="upload-panel" id="upload-panel">
+  <div class="upload-box" id="upload-box">
+    <div class="upload-icon">▤</div>
+    <p class="upload-title">Drop an x86-64 ELF binary here</p>
+    <p class="upload-sub">or click to browse</p>
+    <input type="file" id="file-input" hidden/>
+    <div class="upload-row">
+      <button class="btn btn-primary" id="browse-btn">Browse File</button>
+    </div>
+    <div class="upload-args-row">
+      <label class="args-label">argv[1..] args:</label>
+      <input class="args-input" id="args-input" placeholder="e.g.  -v  input.txt"/>
+    </div>
+    <div class="upload-error" id="upload-error"></div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<main class="dashboard hidden" id="dashboard">
+
+  <!-- CONTROL BAR -->
+  <div class="controlbar">
+    <div class="ctrl-group">
+      <button class="btn btn-step"    id="btn-step">▶ Step</button>
+      <button class="btn btn-run"     id="btn-run">⏩ Run</button>
+      <button class="btn btn-pause"   id="btn-pause"   disabled>⏸ Pause</button>
+      <button class="btn btn-restart" id="btn-restart" disabled>↺ Restart</button>
+      <button class="btn btn-newbin"  id="btn-newbin">⏏ New Binary</button>
+    </div>
+    <div class="ctrl-args">
+      <span class="ctrl-label">args:</span>
+      <span class="ctrl-args-val" id="ctrl-args-val">—</span>
+    </div>
+    <div class="halt-banner hidden" id="halt-banner">
+      <span id="halt-banner-icon">🛑</span>
+      <span id="halt-banner-msg"></span>
+    </div>
+  </div>
+
+  <!-- MAIN 2-COL GRID -->
+  <div class="main-grid">
+
+    <!-- LEFT: Disassembly + Terminal -->
+    <div class="col-left">
+
+      <!-- Disassembly pane -->
+      <div class="pane pane-disasm">
+        <div class="pane-hdr">
+          DISASSEMBLY
+          <span class="pane-hdr-rip" id="disasm-rip">RIP: —</span>
+        </div>
+        <div class="disasm-body" id="disasm-body">
+          <div class="disasm-placeholder">Load a binary to begin</div>
+        </div>
+      </div>
+
+      <!-- Terminal pane -->
+      <div class="pane pane-terminal">
+        <div class="pane-hdr">
+          TERMINAL
+          <span class="term-tag">stdout / stdin</span>
+          <div class="pane-hdr-right">
+            <span class="stdin-queued" id="stdin-count"></span>
+            <button class="hdr-btn" id="btn-term-clear">clr</button>
+          </div>
+        </div>
+        <!-- Waiting-for-input prompt (hidden by default) -->
+        <div class="wait-input-banner hidden" id="wait-input-banner">
+          <span class="wait-icon">⌨</span>
+          <span class="wait-msg" id="wait-input-msg">Program is waiting for input…</span>
+        </div>
+        <div class="term-output" id="term-output">
+          <span class="term-placeholder">stdout will appear here…</span>
+        </div>
+        <div class="term-input-row">
+          <span class="term-prompt">stdin&gt;</span>
+          <input class="term-input" id="term-input"
+                 placeholder="type input — supports \x41\x42 hex escapes"/>
+          <button class="btn btn-send" id="btn-term-send">Send</button>
+        </div>
+      </div>
+
+    </div><!-- /col-left -->
+
+    <!-- RIGHT: Registers + Flags + Tabs -->
+    <div class="col-right">
+
+      <!-- Registers -->
+      <div class="pane pane-regs">
+        <div class="pane-hdr">REGISTERS</div>
+        <table class="reg-table"><tbody id="reg-tbody"></tbody></table>
+      </div>
+
+      <!-- Flags -->
+      <div class="pane pane-flags">
+        <div class="pane-hdr">FLAGS  <span class="flags-rflags" id="rflags-val"></span></div>
+        <div class="flags-row" id="flags-row"></div>
+      </div>
+
+      <!-- Tabs: Memory | History | Log -->
+      <div class="pane pane-tabs">
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="memory">Memory</button>
+          <button class="tab-btn"        data-tab="history">History</button>
+          <button class="tab-btn tab-btn-log" data-tab="log">
+            Log<span class="log-dot hidden" id="log-dot"></span>
+          </button>
+        </div>
+
+        <div class="tab-pane active" id="tab-memory">
+          <div class="mem-controls">
+            <input class="mem-addr" id="mem-addr" placeholder="0x400000"/>
+            <input class="mem-size" id="mem-size" placeholder="64"/>
+            <button class="hdr-btn" id="btn-mem-fetch">fetch</button>
+          </div>
+          <div class="hexdump" id="hexdump">
+            <span class="dim">enter address → fetch</span>
+          </div>
+        </div>
+
+        <div class="tab-pane hidden" id="tab-history">
+          <div class="callstack-hdr">CALL STACK</div>
+          <div class="callstack" id="callstack"><span class="dim">empty</span></div>
+          <div class="history-hdr">INSTRUCTION HISTORY <span id="history-count" class="dim">0</span></div>
+          <div class="history-list" id="history-list"></div>
+        </div>
+
+        <div class="tab-pane hidden" id="tab-log">
+          <div class="log-filters">
+            <label><input type="checkbox" id="log-filter-info"  checked/> info</label>
+            <label><input type="checkbox" id="log-filter-warn"  checked/> warn</label>
+            <label><input type="checkbox" id="log-filter-error" checked/> error</label>
+            <button class="hdr-btn" id="btn-log-clear">clr</button>
+          </div>
+          <div class="log-body" id="log-body">
+            <div class="dim log-placeholder">Waiting for execution…</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /col-right -->
+  </div><!-- /main-grid -->
+</main>
+
+<script src="js/constants.js"></script>
+<script src="js/api.js"></script>
+<script src="js/logger.js"></script>
+<script src="js/state_renderer.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

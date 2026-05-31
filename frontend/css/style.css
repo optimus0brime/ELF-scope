@@ -1,0 +1,390 @@
+/* ═══════════════════════════════════════════════════
+   ELFscope — WinDbg-style dark theme
+   Square corners, tight monospace, aligned columns.
+   ═══════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #1e1e1e;
+  --bg-panel:  #252526;
+  --bg-pane:   #1e1e1e;
+  --bg-hdr:    #2d2d2d;
+  --bg-row:    #252526;
+  --bg-sel:    #094771;
+  --bg-cur:    #1a3a5c;
+
+  --border:    #3e3e42;
+  --border-hi: #555;
+
+  --text:      #d4d4d4;
+  --text-dim:  #808080;
+  --text-mute: #555;
+
+  /* WinDbg column colors */
+  --c-addr:    #569cd6;   /* blue  – addresses */
+  --c-bytes:   #4a4a55;   /* muted – raw bytes */
+  --c-mnem:    #dcdcaa;   /* yellow – mnemonics */
+  --c-ops:     #9cdcfe;   /* light blue – operands */
+  --c-reg:     #4fc1ff;   /* bright blue – register names */
+  --c-val:     #b5cea8;   /* green – numeric values */
+  --c-changed: #f9d849;   /* bright yellow – changed values */
+  --c-cur:     #ffff00;   /* cursor instruction */
+  --c-call:    #c586c0;   /* purple – call/ret */
+  --c-jmp:     #f48771;   /* orange – jumps */
+  --c-str:     #ce9178;   /* orange – strings */
+  --c-ok:      #4ec9b0;   /* teal – success */
+  --c-err:     #f14c4c;   /* red – errors */
+  --c-warn:    #cca700;   /* amber – warnings */
+
+  --font: 'Cascadia Code','Fira Code','Consolas','Courier New',monospace;
+  --ui:   system-ui,-apple-system,sans-serif;
+
+  --topbar-h:   36px;
+  --ctrlbar-h:  40px;
+  --terminal-h: 220px;
+}
+
+html,body { height:100%; background:var(--bg); color:var(--text); font-family:var(--font); font-size:12px; line-height:1.5; overflow:hidden; }
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-hi); }
+::-webkit-scrollbar-thumb:hover { background:#888; }
+
+/* ── Topbar ─────────────────────────────────── */
+.topbar {
+  height: var(--topbar-h);
+  background: var(--bg-hdr);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+.logo { font-size:13px; font-weight:700; color:var(--c-addr); letter-spacing:.5px; }
+.status-badge {
+  font-size:10px; font-weight:700; letter-spacing:1.2px;
+  padding:1px 7px; border:1px solid var(--border);
+  color:var(--text-dim); background:transparent;
+}
+.status-badge.running { color:var(--c-ok);   border-color:var(--c-ok);  }
+.status-badge.halted  { color:var(--c-err);  border-color:var(--c-err); }
+.status-badge.loaded  { color:var(--c-mnem); border-color:var(--c-mnem);}
+.topbar-chips { display:flex; gap:6px; margin-left:auto; }
+.chip { font-size:10px; color:var(--text-dim); padding:1px 8px; border:1px solid var(--border); }
+
+/* ── Upload ─────────────────────────────────── */
+.upload-panel {
+  display:flex; align-items:center; justify-content:center;
+  height:calc(100vh - var(--topbar-h));
+  background:var(--bg);
+}
+.upload-box {
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:48px 64px;
+  border:1px solid var(--border); background:var(--bg-panel);
+  cursor:pointer;
+}
+.upload-box:hover, .upload-box.drag-over { border-color:var(--c-addr); }
+.upload-icon  { font-size:40px; color:var(--text-dim); }
+.upload-title { font-size:15px; font-weight:600; }
+.upload-sub   { color:var(--text-dim); font-size:11px; }
+.upload-row   { display:flex; gap:8px; align-items:center; }
+.upload-args-row { display:flex; gap:8px; align-items:center; margin-top:4px; }
+.args-label   { color:var(--text-dim); font-size:11px; }
+.args-input {
+  background:var(--bg); border:1px solid var(--border);
+  color:var(--text); font-family:var(--font); font-size:11px;
+  padding:3px 8px; width:220px;
+}
+.args-input:focus { outline:none; border-color:var(--c-addr); }
+.upload-error { color:var(--c-err); font-size:11px; min-height:14px; }
+
+/* ── Control bar ────────────────────────────── */
+.controlbar {
+  height: var(--ctrlbar-h);
+  background: var(--bg-hdr);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+.ctrl-group { display:flex; gap:5px; }
+.ctrl-args  { display:flex; align-items:center; gap:6px; margin-left:8px; }
+.ctrl-label { color:var(--text-dim); font-size:10px; letter-spacing:.5px; }
+.ctrl-args-val { color:var(--c-str); font-size:11px; }
+
+/* Halt banner — inline in control bar */
+.halt-banner {
+  display:flex; align-items:center; gap:8px;
+  margin-left:auto; padding:3px 10px;
+  border:1px solid var(--border); font-size:11px;
+}
+.halt-banner.done  { border-color:var(--c-ok);  color:var(--c-ok);  }
+.halt-banner.error { border-color:var(--c-err); color:var(--c-err); }
+
+/* ── Buttons ────────────────────────────────── */
+.btn {
+  padding:4px 12px; border:1px solid var(--border);
+  background:var(--bg-hdr); color:var(--text);
+  font-family:var(--font); font-size:11px; font-weight:600;
+  cursor:pointer; letter-spacing:.2px;
+  transition:background .12s;
+}
+.btn:hover:not(:disabled)    { background:var(--bg-sel); color:#fff; border-color:#aaa; }
+.btn:disabled                 { opacity:.35; cursor:not-allowed; }
+.btn-primary  { background:var(--c-addr); color:#000; border-color:var(--c-addr); }
+.btn-primary:hover { background:#7ab8f5; }
+.btn-step     { border-color:var(--c-ok);   color:var(--c-ok);   }
+.btn-run      { border-color:var(--c-addr); color:var(--c-addr); }
+.btn-pause    { border-color:var(--c-warn); color:var(--c-warn); }
+.btn-restart  { border-color:var(--c-mnem); color:var(--c-mnem); }
+.btn-newbin   { border-color:var(--border); color:var(--text-dim); }
+.btn-send     { border-color:var(--c-ok); color:var(--c-ok); padding:3px 10px; font-size:11px; }
+.hdr-btn {
+  background:transparent; border:1px solid var(--border-hi);
+  color:var(--text-dim); font-family:var(--font); font-size:10px;
+  padding:1px 6px; cursor:pointer;
+}
+.hdr-btn:hover { color:var(--text); border-color:var(--text-dim); }
+
+/* ── Main grid ──────────────────────────────── */
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--topbar-h));
+  overflow: hidden;
+}
+.main-grid {
+  display: grid;
+  grid-template-columns: 56fr 44fr;
+  flex: 1;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+}
+.col-left  { display:flex; flex-direction:column; border-right:1px solid var(--border); overflow:hidden; }
+.col-right { display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Pane ───────────────────────────────────── */
+.pane { display:flex; flex-direction:column; border-bottom:1px solid var(--border); }
+.pane-hdr {
+  display:flex; align-items:center; gap:8px;
+  padding:3px 8px;
+  background:var(--bg-hdr); border-bottom:1px solid var(--border);
+  font-size:10px; font-weight:700; letter-spacing:1.2px;
+  color:var(--text-dim); flex-shrink:0;
+}
+.pane-hdr-rip { color:var(--c-addr); font-weight:400; margin-left:auto; font-size:11px; }
+.pane-hdr-right { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.stdin-queued { color:var(--c-warn); font-size:10px; }
+
+/* ── Disassembly ────────────────────────────── */
+.pane-disasm { flex:1; overflow:hidden; min-height:0; }
+.disasm-body {
+  overflow-y:auto; height:100%;
+  font-size:11.5px; line-height:1.65;
+}
+.disasm-placeholder { padding:12px; color:var(--text-mute); }
+
+.di {
+  display:grid;
+  grid-template-columns: 152px 90px 62px 1fr;
+  padding:0 6px;
+  cursor:default;
+  white-space:nowrap;
+  overflow:hidden;
+}
+.di:hover { background:#2a2a2a; }
+.di.current {
+  background:var(--bg-cur);
+  outline:1px solid #0078d4;
+  outline-offset:-1px;
+}
+.di.current .di-addr { color:var(--c-cur); font-weight:700; }
+.di.current .di-mnem { color:var(--c-cur); font-weight:700; }
+
+.di-arrow { width:14px; display:inline-block; color:var(--c-cur); }
+.di-addr  { color:var(--c-addr); overflow:hidden; text-overflow:ellipsis; }
+.di-bytes { color:var(--c-bytes); font-size:10px; overflow:hidden; text-overflow:ellipsis; padding-top:1px; }
+.di-mnem  { color:var(--c-mnem); }
+.di-ops   { color:var(--c-ops); overflow:hidden; text-overflow:ellipsis; }
+
+/* Mnemonic coloring by type */
+.di-mnem.mc-call, .di-mnem.mc-ret   { color:var(--c-call); }
+.di-mnem.mc-jmp                      { color:var(--c-jmp);  }
+.di-mnem.mc-nop                      { color:var(--text-mute); }
+
+/* ── Terminal ───────────────────────────────── */
+.pane-terminal { height:var(--terminal-h); flex-shrink:0; }
+.wait-input-banner {
+  display:flex; align-items:center; gap:8px;
+  padding:4px 10px; background:#1a2a1a;
+  border-bottom:1px solid var(--c-ok); font-size:11px;
+  flex-shrink:0;
+}
+.wait-icon { font-size:14px; animation:blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.wait-msg { color:var(--c-ok); }
+
+.term-output {
+  flex:1; overflow-y:auto; padding:4px 8px;
+  font-size:11.5px; line-height:1.7; background:#111;
+  white-space:pre-wrap; word-break:break-all;
+}
+.term-placeholder { color:var(--text-mute); font-style:italic; }
+.term-line        { display:block; }
+.term-line.stdout { color:#d4d4d4; }
+.term-line.system { color:var(--text-mute); }
+.term-line.stub   { color:#3a4a3a; }
+
+.term-input-row {
+  display:flex; align-items:center; gap:6px;
+  padding:4px 8px; border-top:1px solid var(--border);
+  background:var(--bg-panel); flex-shrink:0;
+}
+.term-prompt { color:var(--c-ok); font-size:11px; }
+.term-input {
+  flex:1; background:#111; border:1px solid var(--border);
+  color:var(--text); font-family:var(--font); font-size:11px;
+  padding:3px 6px;
+}
+.term-input:focus { outline:none; border-color:var(--c-ok); }
+.term-input.waiting { border-color:var(--c-ok); animation:glow .8s ease-in-out infinite alternate; }
+@keyframes glow { from{box-shadow:0 0 0px var(--c-ok)} to{box-shadow:0 0 6px var(--c-ok)} }
+
+/* ── Registers ──────────────────────────────── */
+.pane-regs { flex-shrink:0; }
+.reg-table { width:100%; border-collapse:collapse; }
+.reg-table tr { border-bottom:1px solid #2a2a2a; }
+.reg-table tr:hover { background:#2a2a2a; }
+.reg-table td { padding:1px 6px; white-space:nowrap; }
+.rn { color:var(--c-reg); width:38px; font-size:11px; font-weight:600; }
+.rv { color:var(--c-val); font-size:11px; width:140px; }
+.rd { color:var(--text-mute); font-size:10px; text-align:right; }
+
+/* Changed register flash */
+.reg-changed { animation:reg-flash .9s ease-out forwards; }
+@keyframes reg-flash {
+  0%   { background:rgba(249,216,73,.25); color:var(--c-changed); }
+  100% { background:transparent; }
+}
+.reg-changed .rv { color:var(--c-changed); }
+
+/* ── Flags ──────────────────────────────────── */
+.pane-flags { flex-shrink:0; }
+.flags-rflags { color:var(--text-mute); font-size:10px; margin-left:auto; font-weight:400; }
+.flags-row { display:flex; gap:1px; padding:4px 6px; flex-wrap:wrap; }
+.flag-chip {
+  display:flex; flex-direction:column; align-items:center;
+  padding:2px 7px; border:1px solid var(--border);
+  min-width:32px; cursor:default;
+}
+.flag-chip.flag-set { border-color:var(--c-mnem); background:rgba(220,220,170,.08); }
+.flag-name  { font-size:8px; font-weight:700; letter-spacing:.8px; color:var(--text-mute); }
+.flag-value { font-size:13px; font-weight:700; color:var(--text-mute); }
+.flag-chip.flag-set .flag-value { color:var(--c-mnem); }
+.flag-changed { animation:reg-flash .9s ease-out forwards; }
+
+/* ── Right tabs ─────────────────────────────── */
+.pane-tabs { flex:1; display:flex; flex-direction:column; overflow:hidden; min-height:0; }
+.tab-bar {
+  display:flex; gap:0; border-bottom:1px solid var(--border);
+  background:var(--bg-hdr); flex-shrink:0;
+}
+.tab-btn {
+  padding:4px 14px; background:transparent; border:none; border-right:1px solid var(--border);
+  color:var(--text-dim); font-family:var(--font); font-size:10px; font-weight:600;
+  letter-spacing:.8px; cursor:pointer; position:relative;
+}
+.tab-btn:hover  { color:var(--text); background:#2a2a2a; }
+.tab-btn.active { color:var(--c-mnem); background:var(--bg-pane); border-bottom:1px solid var(--bg-pane); margin-bottom:-1px; }
+.tab-btn-log { position:relative; }
+.log-dot {
+  position:absolute; top:5px; right:5px;
+  width:6px; height:6px; border-radius:50%; background:var(--c-err);
+  animation:pulse .9s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.tab-pane { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0; }
+
+/* Memory */
+.mem-controls { display:flex; gap:4px; padding:4px 6px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.mem-addr, .mem-size {
+  background:var(--bg); border:1px solid var(--border);
+  color:var(--text); font-family:var(--font); font-size:11px; padding:2px 5px;
+}
+.mem-addr { width:110px; }
+.mem-size  { width:44px; }
+.mem-addr:focus, .mem-size:focus { outline:none; border-color:var(--c-addr); }
+.hexdump { padding:4px 6px; font-size:10.5px; line-height:1.7; overflow-y:auto; }
+.hex-row { display:grid; grid-template-columns:140px 1fr 80px; gap:8px; }
+.hex-addr  { color:var(--c-addr); }
+.hex-bytes { color:var(--text); word-spacing:3px; }
+.hex-ascii { color:var(--text-dim); }
+
+/* History */
+.callstack-hdr, .history-hdr {
+  padding:3px 8px; font-size:10px; font-weight:700; letter-spacing:1px;
+  color:var(--text-mute); background:var(--bg-hdr); border-bottom:1px solid var(--border);
+  display:flex; gap:8px; align-items:center; flex-shrink:0;
+}
+.callstack { padding:4px 6px; font-size:11px; min-height:28px; }
+.cs-entry { display:flex; gap:10px; padding:1px 0; }
+.cs-depth  { color:var(--text-mute); }
+.cs-site   { color:var(--text-dim); }
+.cs-target { color:var(--c-addr); }
+.history-list { overflow-y:auto; flex:1; }
+.history-entry {
+  display:grid; grid-template-columns:140px 60px 1fr;
+  gap:6px; padding:1px 6px; border-bottom:1px solid #222;
+  font-size:11px; cursor:default;
+}
+.history-entry:hover { background:#2a2a2a; }
+.history-entry.current { background:var(--bg-cur); }
+.h-addr { color:var(--c-addr); }
+.h-mnem { color:var(--c-mnem); }
+.h-ops  { color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* Log */
+.log-filters {
+  display:flex; gap:8px; align-items:center;
+  padding:3px 8px; border-bottom:1px solid var(--border);
+  background:var(--bg-hdr); font-size:10px; color:var(--text-dim); flex-shrink:0;
+}
+.log-filters label { display:flex; align-items:center; gap:3px; cursor:pointer; }
+.log-filters input { cursor:pointer; accent-color:var(--c-addr); }
+.log-body { overflow-y:auto; flex:1; font-size:10.5px; }
+.log-placeholder { padding:8px; color:var(--text-mute); font-style:italic; }
+.log-entry {
+  display:grid; grid-template-columns:78px 46px 1fr auto;
+  gap:6px; padding:2px 6px; border-bottom:1px solid #222;
+  align-items:baseline; border-left:2px solid transparent;
+}
+.log-entry.log-warn  { border-left-color:var(--c-warn); background:rgba(204,167,0,.04); }
+.log-entry.log-error { border-left-color:var(--c-err);  background:rgba(241,76,76,.06); }
+.log-entry.log-system{ border-left-color:var(--c-addr); }
+.log-time   { color:var(--text-mute); font-size:9.5px; }
+.log-badge  { font-size:9px; font-weight:700; letter-spacing:.5px; padding:0 4px; }
+.log-badge-info   { color:var(--text-mute); }
+.log-badge-warn   { color:var(--c-warn); }
+.log-badge-error  { color:var(--c-err); }
+.log-badge-system { color:var(--c-addr); }
+.log-badge-step   { color:#333; }
+.log-msg    { color:var(--text); }
+.log-entry.log-error .log-msg  { color:var(--c-err); }
+.log-entry.log-warn  .log-msg  { color:var(--c-warn); }
+.log-entry.log-system .log-msg { color:var(--c-addr); }
+.log-entry.log-step  .log-msg  { color:var(--text-mute); }
+.log-detail { color:var(--text-mute); font-size:10px; text-align:right; white-space:nowrap; }
+
+/* Utilities */
+.hidden { display:none !important; }
+.dim    { color:var(--text-mute); }
+.tag    { font-size:9px; padding:1px 5px; border:1px solid var(--border); color:var(--text-mute); }
+.term-tag { color:var(--c-ok); border:1px solid var(--c-ok); font-size:9px; padding:0 5px; font-weight:400; }
