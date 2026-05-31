@@ -10,27 +10,6 @@ Built for exploit development, malware analysis, and low-level systems education
 
 ---
 
-## Screenshot
-
-```
-┌─ ELFscope ─────────────────────────────────── RUNNING ──┐
-│ DISASSEMBLY                             RIP: 0x00401176  │
-│   0x00401160  push   rbp                                 │
-│   0x00401161  mov    rbp, rsp                            │
-│ ► 0x00401164  call   printf@plt                          │
-│   0x00401169  lea    rax, [rbp-0x40]                     │
-│   0x0040116d  mov    rdi, rax                            │
-│   0x00401170  call   gets@plt          ← WAITING INPUT   │
-├─ TERMINAL ──────────────────────────────────────────────┤
-│  === Stack BOF Demo ===                                  │
-│  secret() @ 0x401142                                     │
-│  Input:                                                  │
-│  stdin> AAAA\x41\x41\x41\x41\x42\x11\x40\x00_          │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
 ## Features
 
 ### Execution Engine
@@ -58,16 +37,6 @@ ELFscope parses `.rela.plt` at load time and patches each GOT entry to point to 
 | String | `strlen` `strcpy` `strcmp` `memset` `memcpy` `strcat` `strncat` |
 | Process | `system` `exit` `abort` `__libc_start_main` `__stack_chk_fail` |
 
-### Pause-on-Input
-When `gets()`, `fgets()`, or `scanf()` is called and stdin is empty, ELFscope calls `uc.emu_stop()` inside the Unicorn hook — execution halts cleanly, the terminal panel glows green, and you type the input directly. Hit Enter and execution resumes from exactly where it stopped. If **Run** mode was active, it restarts automatically after input.
-
-### stdin Payload Support
-Pre-queue input lines before running. Supports `\xNN` hex escapes for binary payloads:
-
-```
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\x42\x11\x40\x00\x00\x00\x00\x00
-```
-
 ### Halt Behavior
 - Normal exits show a green ✅ inline banner — no blocking overlay
 - Error halts (bad memory, invalid instruction, stack smash) show a red 🛑 banner with exact reason
@@ -88,45 +57,6 @@ python run.py
 Open `http://localhost:5000`. Drop any x86-64 ELF binary onto the upload area.
 
 A test binary is included at `backend/tests/binaries/test_add.elf` — a static binary that adds 10 + 32 and returns 42, good for verifying the setup.
-
----
-
-## Stack Buffer Overflow Demo
-
-Compile a vulnerable binary:
-
-```c
-// bof.c
-#include <stdio.h>
-char *gets(char *s);
-
-void secret() {
-    printf("[!] secret() reached\n");
-    system("/bin/sh");
-}
-void vuln() {
-    char buf[64];
-    printf("Input: ");
-    gets(buf);
-}
-int main() {
-    printf("secret() @ %p\n", (void *)secret);
-    vuln();
-    return 0;
-}
-```
-
-```bash
-gcc -O0 -no-pie -fno-stack-protector bof.c -o bof.elf
-```
-
-Load `bof.elf` in ELFscope. The terminal prints `secret() @ 0x401142`. Type your payload in the stdin panel using the address shown:
-
-```
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\x42\x11\x40\x00\x00\x00\x00\x00
-```
-
-The return address overwrites. When `vuln()` returns, RIP jumps to `secret()`. The terminal shows `[system("/bin/sh") called — stubbed]`. The halt banner shows the hijacked RIP. The entire overflow is visible in the register panel, step by step.
 
 ---
 
@@ -169,7 +99,7 @@ The return address overwrites. When `vuln()` returns, RIP jumps to `secret()`. T
 ## Project Structure
 
 ```
-elfscope/
+ELF-scope/
 ├── run.py                          # Single-command startup
 ├── requirements.txt
 │
@@ -225,21 +155,6 @@ elfscope/
 | Backend | [Flask](https://flask.palletsprojects.com/) 2.x + flask-cors |
 | Frontend | Vanilla JS — no build step, no framework |
 | Python | 3.9+ |
-
----
-
-## Roadmap
-
-- [ ] Taint tracking — mark attacker-controlled bytes and propagate through execution
-- [ ] Stack layout visualizer — frame boundaries, canary, saved RBP, return address rendered as a spatial diagram
-- [ ] ROP gadget scanner and chain builder
-- [ ] Syscall trace log (strace-style timeline)
-- [ ] Memory snapshot diff — compare any two execution points byte-by-byte
-- [ ] Code coverage heatmap over disassembly
-- [ ] Shadow stack — detect return address overwrites the moment they happen
-- [ ] Cache + pipeline simulation (COA teaching mode)
-- [ ] ASLR simulation with infoleak workflow
-- [ ] Heap visualization (chunk headers, free list, bin state)
 
 ---
 
