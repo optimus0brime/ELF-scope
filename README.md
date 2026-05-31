@@ -1,4 +1,4 @@
-# ELFscope
+# ELF-scope
 
 > A web-based x86-64 CPU emulator and debugger dashboard. Load any ELF binary, step through it instruction by instruction, and watch registers, flags, memory, and the stack update in real time.
 
